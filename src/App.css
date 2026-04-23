@@ -171,150 +171,162 @@ body {
 .entry-header-actions { display: flex; align-items: center; gap: 8px; }
 .chevron { color: #8e8e93; font-size: 0.75rem; }
 
-/* ── ツールバー（検索 ＋ アクションボタン） ─────────────── */
-.detail-toolbar {
+/* ── Sticky ツールバー ────────────────────────────────────── */
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(245, 245, 247, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  padding: 8px 0 10px;
+  margin: 0 -16px;       /* 横幅をコンテナいっぱいに */
+  padding-left: 16px;
+  padding-right: 16px;
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
 }
 .search-wrap {
   position: relative;
   flex: 1;
-  min-width: 180px;
+  min-width: 0;
   display: flex;
   align-items: center;
 }
 .search-icon {
   position: absolute;
-  left: 12px;
-  font-size: 1rem;
+  left: 11px;
+  font-size: 1.05rem;
   color: #8e8e93;
   pointer-events: none;
   line-height: 1;
 }
 .search-input {
   width: 100%;
-  padding: 8px 36px;
-  border: 1px solid #e5e5ea;
+  padding: 7px 34px;
+  border: 1px solid transparent;
   border-radius: 99px;
   font-size: 0.88rem;
-  background: #f5f5f7;
+  background: rgba(120,120,128,0.12);
   outline: none;
-  transition: border-color 0.15s, background 0.15s;
   font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
 }
 .search-input:focus {
-  border-color: #007aff;
   background: #fff;
+  border-color: #007aff;
+  box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
 }
 .search-clear {
   position: absolute;
-  right: 10px;
-  background: none;
+  right: 8px;
+  background: rgba(120,120,128,0.25);
   border: none;
-  color: #8e8e93;
-  cursor: pointer;
-  font-size: 0.8rem;
-  padding: 4px;
-}
-.toolbar-btns {
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
   display: flex;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.65rem;
+  line-height: 1;
+}
+.toolbar-actions {
+  display: flex;
+  gap: 6px;
   flex-shrink: 0;
 }
-
-/* ── セグメントレイアウト（本文 ＋ ノート列） ────────────── */
-.segment-layout {
-  display: flex;
-  flex-direction: column; /* モバイル：縦積み */
+.toolbar-btn {
+  background: rgba(120,120,128,0.12);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #1d1d1f;
+  transition: background 0.15s;
+  white-space: nowrap;
 }
-.segment-main {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+.toolbar-btn:hover { background: rgba(120,120,128,0.22); }
+
+/* ── マージンノート ────────────────────────────────────────── */
+
+/* モバイル：ノートがある場合のみセグメント直下に表示 */
+.margin-note {
+  display: none;          /* デフォルト非表示 */
+}
+.margin-note.has-note {
+  display: block;
+  padding: 8px 16px 12px;
+  border-top: 1px dashed #e8e8ec;
 }
 
-/* ── ノート列 ─────────────────────────────────────────────── */
-
-/* モバイル専用のノートトグルボタン */
-.btn-note-mobile { margin-left: auto; }
-
-/* デスクトップではトグルボタンを非表示 */
+/* モバイル：「📝 メモ」ボタン（デスクトップでは非表示） */
+.btn-note-add { margin-left: auto; }
 @media (min-width: 900px) {
-  .btn-note-mobile { display: none; }
+  .btn-note-add { display: none; }
 }
 
-/* モバイル：ノートは別行（有content時、またはトグルで表示） */
-.note-mobile {
-  border-top: 1px dashed #e5e5ea;
-  padding: 10px 16px 12px;
-}
-/* デスクトップでは mobile ノートを非表示 */
+/* デスクトップ：カード外の右余白に絶対配置 */
 @media (min-width: 900px) {
-  .note-mobile { display: none; }
-}
+  .entry-card { overflow: visible; }
 
-/* デスクトップ：ノート列を右側に並べるグリッド */
-@media (min-width: 900px) {
-  .segment-layout {
-    display: grid;
-    grid-template-columns: 1fr 230px;
-    align-items: stretch;
+  .segment { position: relative; }
+
+  .margin-note {
+    display: block;          /* 常時表示 */
+    position: absolute;
+    left: calc(100% + 20px); /* カード右端の外へ */
+    top: 0;
+    width: 220px;
+    min-height: 52px;
+    background: #fffef0;
+    border: 1px solid #e8e0aa;
+    border-radius: 8px;
+    padding: 8px 10px;
+    box-shadow: 0 1px 4px rgba(180,160,0,0.1);
+    transition: box-shadow 0.15s;
   }
-  /* desktop ノート列 */
-  .note-desktop {
-    border-left: 1px solid #f0f0f2;
-    padding: 10px 14px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
+  .margin-note.has-note {
+    border-color: #c8b840;
+    background: #fffde8;
+    box-shadow: 0 2px 8px rgba(160,140,0,0.14);
   }
 }
 
-/* モバイルでは desktop ノート列を非表示 */
-.note-desktop {
-  display: none;
-}
-@media (min-width: 900px) {
-  .note-desktop { display: flex; }
-}
-
-/* ノートテキスト */
-.note-text {
-  font-size: 0.82rem;
+/* ノート本文 */
+.note-body {
+  font-size: 0.8rem;
   line-height: 1.65;
-  color: #3a3a3c;
+  color: #4a4820;
   white-space: pre-wrap;
   cursor: pointer;
-  border-radius: 6px;
-  padding: 4px 6px;
-  transition: background 0.1s;
-  min-height: 36px;
+  min-height: 24px;
 }
-.note-text:hover { background: #f5f5f7; }
-.note-placeholder {
-  color: #c7c7cc;
-  font-size: 0.8rem;
+.note-body:hover { opacity: 0.75; }
+.note-empty {
+  color: #c8c090;
+  font-size: 0.75rem;
 }
-.note-placeholder:hover { background: #f5f5f7; }
 
-/* ノート編集textarea */
+/* ノート編集 textarea */
 .note-textarea {
   width: 100%;
-  border: 1px solid #d1d1d6;
-  border-radius: 6px;
-  padding: 6px 8px;
-  font-size: 0.82rem;
+  border: none;
+  background: transparent;
+  font-size: 0.8rem;
   font-family: inherit;
   line-height: 1.65;
-  color: #3a3a3c;
-  background: #fafafa;
-  resize: vertical;
+  color: #4a4820;
+  resize: none;
   outline: none;
-  transition: border-color 0.15s;
+  min-height: 64px;
+  padding: 0;
 }
-.note-textarea:focus { border-color: #007aff; background: #fff; }
 
 /* ── しおり線（SegmentDivider）──────────────────────────── */
 .seg-divider {
@@ -381,11 +393,11 @@ body {
   flex-direction: column;
 }
 
-/* segment-main は .segment-layout で定義済み */
-
 .segment-footer {
   padding: 6px 16px 10px;
   display: flex;
+  align-items: center;
+  gap: 8px;
   justify-content: flex-end;
 }
 
