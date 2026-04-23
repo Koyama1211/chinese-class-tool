@@ -127,92 +127,6 @@ body {
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   overflow: hidden;
-  display: flex;
-  flex-direction: row;
-  transition: opacity 0.3s, filter 0.3s, box-shadow 0.2s;
-}
-
-/* しおりレール */
-.bookmark-rail {
-  width: 10px;
-  flex-shrink: 0;
-  background: transparent;
-  cursor: pointer;
-  transition: width 0.2s ease, background 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-.bookmark-rail:hover {
-  background: rgba(255, 149, 0, 0.18);
-}
-.entry-card--bookmarked .bookmark-rail {
-  width: 26px;
-  background: #ff9500;
-}
-.bookmark-label {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-size: 9px;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: 2px;
-  user-select: none;
-  white-space: nowrap;
-}
-
-/* カード本体 */
-.entry-inner {
-  flex: 1;
-  min-width: 0;
-}
-
-/* しおり：現在地カード */
-.entry-card--bookmarked {
-  box-shadow: 0 3px 12px rgba(255, 149, 0, 0.25);
-}
-
-/* しおり：通過済みカード */
-.entry-card--passed {
-  opacity: 0.38;
-  filter: grayscale(30%);
-}
-.entry-card--passed:hover {
-  opacity: 0.65;
-  filter: none;
-}
-
-/* 進捗バー */
-.progress-bar-wrap {
-  position: relative;
-  height: 6px;
-  background: #e5e5ea;
-  border-radius: 99px;
-  overflow: hidden;
-}
-.progress-bar-fill {
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  background: #ff9500;
-  border-radius: 99px;
-  transition: width 0.4s ease;
-}
-.progress-label {
-  display: block;
-  text-align: right;
-  font-size: 0.75rem;
-  color: #8e8e93;
-  margin-top: 4px;
-}
-
-/* しおりヒント */
-.bookmark-hint {
-  font-size: 0.78rem;
-  color: #aeaeb2;
-  text-align: center;
-  padding: 2px 0 4px;
-  user-select: none;
 }
 
 .entry-header {
@@ -224,9 +138,81 @@ body {
   user-select: none;
 }
 .entry-header:hover { background: #f9f9fb; }
+.entry-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 .entry-label { font-weight: 600; }
+
+/* 進捗バッジ（カードヘッダーに表示） */
+.entry-progress-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #fff3e0;
+  color: #e65100;
+  border-radius: 99px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .entry-header-actions { display: flex; align-items: center; gap: 8px; }
 .chevron { color: #8e8e93; font-size: 0.75rem; }
+
+/* ── セグメントしおり ─────────────────────────────── */
+
+/* しおり未設定時のヒント */
+.seg-bookmark-hint {
+  font-size: 0.75rem;
+  color: #c7c7cc;
+  text-align: center;
+  padding: 8px 0 0;
+  user-select: none;
+}
+
+/* セグメント本体（クリック可能エリア） */
+.segment-body {
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s;
+}
+.segment-body:hover {
+  background: #fafafa;
+}
+
+/* 今ここバッジ */
+.here-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: #ff9500;
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin: 8px 16px 0;
+  letter-spacing: 1px;
+  user-select: none;
+}
+
+/* 現在地セグメント */
+.segment--here {
+  border-left: 4px solid #ff9500;
+  background: #fffbf5;
+}
+.segment--here .segment-body:hover {
+  background: #fff5e8;
+}
+
+/* 通過済みセグメント */
+.segment--passed {
+  opacity: 0.32;
+  transition: opacity 0.25s;
+}
+.segment--passed:hover {
+  opacity: 0.7;
+}
 
 /* Interlinear display */
 .entry-body {
