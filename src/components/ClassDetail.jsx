@@ -214,26 +214,14 @@ export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, on
   // 展開状態を ClassDetail で一元管理（全展開 / 全折り用）
   const [expandedIds, setExpandedIds] = useState(new Set())
 
-  // しおり（クラスごとに localStorage）
-  const bmKey = `bookmarks-${cls.id}`
-  const [bookmarks, setBookmarks] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(bmKey) || '{}') } catch { return {} }
-  })
-  useEffect(() => {
-    localStorage.setItem(bmKey, JSON.stringify(bookmarks))
-  }, [bookmarks, bmKey])
-
+  // しおり → Supabase の entries.bookmark_pos に保存
   function handleSetBookmark(entryId, pos) {
-    setBookmarks(prev => {
-      const next = { ...prev }
-      if (pos === null) delete next[entryId]
-      else next[entryId] = pos
-      return next
-    })
+    // 楽観的 UI：useStore が Supabase 更新後にローカル state も更新する
+    onUpdateEntry(entryId, { bookmark_pos: pos })
   }
 
   function jumpToBookmark() {
-    const entryId = cls.entries.find(e => bookmarks[e.id] !== undefined)?.id
+    const entryId = cls.entries.find(e => e.bookmark_pos !== null && e.bookmark_pos !== undefined)?.id
     if (!entryId) return
     setExpandedIds(prev => new Set([...prev, entryId]))
     setTimeout(() => {
@@ -256,7 +244,7 @@ export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, on
     : cls.entries
 
   const editingEntry   = editingId ? cls.entries.find(e => e.id === editingId) : null
-  const hasAnyBookmark = Object.keys(bookmarks).length > 0
+  const hasAnyBookmark = cls.entries.some(e => e.bookmark_pos !== null && e.bookmark_pos !== undefined)
   const allExpanded    = filteredEntries.length > 0 && filteredEntries.every(e => expandedIds.has(e.id))
 
   return (
@@ -330,7 +318,7 @@ export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, on
               next.has(entry.id) ? next.delete(entry.id) : next.add(entry.id)
               return next
             })}
-            bookmarkPos={bookmarks[entry.id] ?? null}
+            bookmarkPos={entry.bookmark_pos ?? null}
             onSetBookmark={pos => handleSetBookmark(entry.id, pos)}
             onEdit={() => { setEditingId(entry.id); setShowForm(false) }}
             onDelete={() => onDeleteEntry(entry.id)}
