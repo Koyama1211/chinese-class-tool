@@ -161,57 +161,57 @@ body {
 .entry-header-actions { display: flex; align-items: center; gap: 8px; }
 .chevron { color: #8e8e93; font-size: 0.75rem; }
 
-/* ── セグメントしおり ─────────────────────────────── */
-
-/* しおり未設定時のヒント */
-.seg-bookmark-hint {
-  font-size: 0.75rem;
-  color: #c7c7cc;
-  text-align: center;
-  padding: 8px 0 0;
-  user-select: none;
-}
-
-/* セグメント本体（クリック可能エリア） */
-.segment-body {
+/* ── しおり線（SegmentDivider）──────────────────────────── */
+.seg-divider {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   position: relative;
-  transition: background 0.15s;
+  /* 透明な帯の中央に線を引く */
 }
-.segment-body:hover {
-  background: #fafafa;
+.seg-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: #e5e5ea;
+  transition: background 0.15s, height 0.15s;
+}
+.seg-divider:hover::before {
+  background: rgba(255, 149, 0, 0.45);
+  height: 2px;
+}
+.seg-divider--active::before {
+  background: #ff9500;
+  height: 2px;
 }
 
-/* 今ここバッジ */
-.here-badge {
-  display: inline-block;
-  font-size: 0.7rem;
+/* 「今ここ」ラベル：アクティブな線の上に浮かぶ */
+.divider-label {
+  position: relative;
+  z-index: 1;
+  font-size: 0.68rem;
   font-weight: 800;
   background: #ff9500;
   color: #fff;
-  border-radius: 4px;
-  padding: 2px 8px;
-  margin: 8px 16px 0;
-  letter-spacing: 1px;
+  border-radius: 99px;
+  padding: 2px 12px;
+  letter-spacing: 0.5px;
   user-select: none;
-}
-
-/* 現在地セグメント */
-.segment--here {
-  border-left: 4px solid #ff9500;
-  background: #fffbf5;
-}
-.segment--here .segment-body:hover {
-  background: #fff5e8;
+  white-space: nowrap;
 }
 
 /* 通過済みセグメント */
 .segment--passed {
-  opacity: 0.32;
-  transition: opacity 0.25s;
+  opacity: 0.28;
+  transition: opacity 0.2s;
 }
 .segment--passed:hover {
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 /* Interlinear display */
@@ -224,9 +224,6 @@ body {
 .segment {
   display: flex;
   flex-direction: column;
-}
-.segment + .segment {
-  border-top: 2px solid #e5e5ea;
 }
 
 /* Per-segment inline correction */

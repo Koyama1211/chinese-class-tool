@@ -13,19 +13,26 @@ function buildSegments(entry) {
   })).filter(s => s.chinese || s.pinyin || s.japanese)
 }
 
-// ── セグメント表示（しおり対応）─────────────────────────────
-function SegmentView({ seg, index, isBookmarked, isPassed, onSetBookmark, onStartEdit }) {
-  const cls = [
-    'segment',
-    isBookmarked && 'segment--here',
-    isPassed     && 'segment--passed',
-  ].filter(Boolean).join(' ')
-
+// ── セグメント間のしおり線 ────────────────────────────────
+// pos = N → 「N 番目のセグメントの手前」がしおり位置
+// セグメント i < pos が「済」
+function SegmentDivider({ pos, isActive, onTap }) {
   return (
-    <div className={cls}>
-      {/* 本文エリア：タップでしおりをセット／解除 */}
-      <div className="segment-body" onClick={() => onSetBookmark(index)}>
-        {isBookmarked && <span className="here-badge">今ここ</span>}
+    <div
+      className={`seg-divider${isActive ? ' seg-divider--active' : ''}`}
+      onClick={() => onTap(isActive ? null : pos)}
+      title={isActive ? 'しおりを外す' : 'ここにしおりを挟む'}
+    >
+      {isActive && <span className="divider-label">今ここ</span>}
+    </div>
+  )
+}
+
+// ── セグメント表示 ────────────────────────────────────────
+function SegmentView({ seg, isPassed, onStartEdit }) {
+  return (
+    <div className={`segment${isPassed ? ' segment--passed' : ''}`}>
+      <div className="segment-rows">
         {seg.chinese && (
           <div className="interlinear-row">
             <span className="lang-badge zh">中文</span>
@@ -45,12 +52,8 @@ function SegmentView({ seg, index, isBookmarked, isPassed, onSetBookmark, onStar
           </div>
         )}
       </div>
-      {/* 修正ボタンはしおりとは独立 */}
       <div className="segment-footer">
-        <button
-          className="btn-correct"
-          onClick={e => { e.stopPropagation(); onStartEdit() }}
-        >
+        <button className="btn-correct" onClick={onStartEdit}>
           ✏️ この文を修正
         </button>
       </div>
@@ -91,24 +94,24 @@ function EntryCard({ entry, onEdit, onDelete, onUpdate }) {
   const [editingSegIdx, setEditingSegIdx] = useState(null)
   const segments = buildSegments(entry)
 
-  // セグメントしおり：エントリーごとに localStorage で永続化
+  // しおり位置：「N 番目のセグメントの手前」= セグメント 0〜N-1 が済
   const bmKey = `seg-bm-${entry.id}`
-  const [bookmarkSegIdx, setBookmarkSegIdx] = useState(() => {
+  const [bookmarkPos, setBookmarkPos] = useState(() => {
     const saved = localStorage.getItem(bmKey)
     return saved !== null ? Number(saved) : null
   })
 
   useEffect(() => {
-    if (bookmarkSegIdx !== null) {
-      localStorage.setItem(bmKey, String(bookmarkSegIdx))
+    if (bookmarkPos !== null) {
+      localStorage.setItem(bmKey, String(bookmarkPos))
     } else {
       localStorage.removeItem(bmKey)
     }
-  }, [bookmarkSegIdx, bmKey])
+  }, [bookmarkPos, bmKey])
 
-  function handleSetBookmark(idx) {
-    // 同じセグメントをタップ → しおり解除
-    setBookmarkSegIdx(prev => prev === idx ? null : idx)
+  function handleDividerTap(pos) {
+    // pos === null のとき → しおりを外す
+    setBookmarkPos(pos)
   }
 
   function handleSegmentSave(index, updated) {
@@ -122,10 +125,9 @@ function EntryCard({ entry, onEdit, onDelete, onUpdate }) {
     setEditingSegIdx(null)
   }
 
-  // しおりが設定されている場合の進捗表示
-  const hasBookmark = bookmarkSegIdx !== null && bookmarkSegIdx < segments.length
+  const hasBookmark = bookmarkPos !== null
   const progress = hasBookmark
-    ? `${bookmarkSegIdx} / ${segments.length} 文`
+    ? `${bookmarkPos} / ${segments.length} 文`
     : null
 
   return (
@@ -133,10 +135,7 @@ function EntryCard({ entry, onEdit, onDelete, onUpdate }) {
       <div className="entry-header" onClick={() => setExpanded(e => !e)}>
         <div className="entry-header-left">
           <span className="entry-label">{entry.label || '翻訳文'}</span>
-          {/* 進捗バッジ：しおりが設定済みの場合のみ表示 */}
-          {progress && (
-            <span className="entry-progress-badge">{progress}</span>
-          )}
+          {progress && <span className="entry-progress-badge">{progress}</span>}
         </div>
         <div className="entry-header-actions">
           <button className="btn-ghost btn-sm" onClick={e => { e.stopPropagation(); onEdit() }}>全体編集</button>
@@ -147,11 +146,6 @@ function EntryCard({ entry, onEdit, onDelete, onUpdate }) {
 
       {expanded && (
         <div className="entry-body">
-          {/* しおり未設定時のヒント */}
-          {!hasBookmark && segments.length > 1 && (
-            <p className="seg-bookmark-hint">文をタップしてしおりを挟む</p>
-          )}
-
           {segments.map((seg, i) =>
             editingSegIdx === i ? (
               <SegmentEdit
@@ -161,15 +155,22 @@ function EntryCard({ entry, onEdit, onDelete, onUpdate }) {
                 onCancel={() => setEditingSegIdx(null)}
               />
             ) : (
-              <SegmentView
-                key={i}
-                seg={seg}
-                index={i}
-                isBookmarked={hasBookmark && bookmarkSegIdx === i}
-                isPassed={hasBookmark && i < bookmarkSegIdx}
-                onSetBookmark={handleSetBookmark}
-                onStartEdit={() => setEditingSegIdx(i)}
-              />
+              // セグメント本体 → セグメント間の線（次のセグメントの手前）
+              <div key={i}>
+                <SegmentView
+                  seg={seg}
+                  isPassed={hasBookmark && i < bookmarkPos}
+                  onStartEdit={() => setEditingSegIdx(i)}
+                />
+                {/* 最後のセグメント以外に divider を挿入 */}
+                {i < segments.length - 1 && (
+                  <SegmentDivider
+                    pos={i + 1}
+                    isActive={bookmarkPos === i + 1}
+                    onTap={handleDividerTap}
+                  />
+                )}
+              </div>
             )
           )}
         </div>
