@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import EntryForm from './EntryForm'
 
 function buildSegments(entry) {
@@ -7,15 +7,13 @@ function buildSegments(entry) {
   const ja = (entry.japanese || '').split('\n')
   const len = Math.max(zh.length, py.length, ja.length)
   return Array.from({ length: len }, (_, i) => ({
-    chinese: (zh[i] || '').trim(),
-    pinyin:  (py[i] || '').trim(),
-    japanese:(ja[i] || '').trim(),
+    chinese:  (zh[i] || '').trim(),
+    pinyin:   (py[i] || '').trim(),
+    japanese: (ja[i] || '').trim(),
   })).filter(s => s.chinese || s.pinyin || s.japanese)
 }
 
-// ── セグメント間のしおり線 ────────────────────────────────
-// pos = N → 「N 番目のセグメントの手前」がしおり位置
-// セグメント i < pos が「済」
+// ── しおり線 ──────────────────────────────────────────────────
 function SegmentDivider({ pos, isActive, onTap }) {
   return (
     <div
@@ -28,40 +26,99 @@ function SegmentDivider({ pos, isActive, onTap }) {
   )
 }
 
-// ── セグメント表示 ────────────────────────────────────────
-function SegmentView({ seg, isPassed, onStartEdit }) {
+// ── セグメント表示（ノート列付き） ───────────────────────────
+function SegmentView({ seg, isPassed, onStartEdit, note, onNoteChange }) {
+  const [localNote, setLocalNote] = useState(note || '')
+  const [editingNote, setEditingNote] = useState(false)
+  const [showMobileNote, setShowMobileNote] = useState(false)
+
+  // 親から note が変わったとき（別デバイスから更新など）に同期
+  useEffect(() => { setLocalNote(note || '') }, [note])
+
+  const hasNote = !!localNote.trim()
+
+  function handleNoteBlur() {
+    setEditingNote(false)
+    if (localNote.trim() !== (note || '').trim()) {
+      onNoteChange(localNote.trim())
+    }
+  }
+
+  const noteContent = editingNote ? (
+    <textarea
+      className="note-textarea"
+      value={localNote}
+      onChange={e => setLocalNote(e.target.value)}
+      onBlur={handleNoteBlur}
+      autoFocus
+      placeholder="先生の解説・補足メモ..."
+      rows={4}
+    />
+  ) : (
+    <div
+      className={`note-text${hasNote ? '' : ' note-placeholder'}`}
+      onClick={() => setEditingNote(true)}
+    >
+      {hasNote ? localNote : '＋ メモ'}
+    </div>
+  )
+
   return (
     <div className={`segment${isPassed ? ' segment--passed' : ''}`}>
-      <div className="segment-rows">
-        {seg.chinese && (
-          <div className="interlinear-row">
-            <span className="lang-badge zh">中文</span>
-            <p className="text-zh">{seg.chinese}</p>
+      <div className="segment-layout">
+
+        {/* ── 本文エリア ── */}
+        <div className="segment-main">
+          {seg.chinese && (
+            <div className="interlinear-row">
+              <span className="lang-badge zh">中文</span>
+              <p className="text-zh">{seg.chinese}</p>
+            </div>
+          )}
+          {seg.pinyin && (
+            <div className="interlinear-row">
+              <span className="lang-badge py">拼音</span>
+              <p className="text-py">{seg.pinyin}</p>
+            </div>
+          )}
+          {seg.japanese && (
+            <div className="interlinear-row">
+              <span className="lang-badge ja">日本語</span>
+              <p className="text-ja">{seg.japanese}</p>
+            </div>
+          )}
+          <div className="segment-footer">
+            <button className="btn-correct" onClick={onStartEdit}>✏️ 修正</button>
+            {/* モバイル専用：ノートトグル */}
+            <button
+              className="btn-correct btn-note-mobile"
+              onClick={() => {
+                setShowMobileNote(v => !v)
+                if (!showMobileNote && !hasNote) setEditingNote(true)
+              }}
+            >
+              {hasNote ? '📝 メモあり' : '📝 メモ'}
+            </button>
           </div>
-        )}
-        {seg.pinyin && (
-          <div className="interlinear-row">
-            <span className="lang-badge py">拼音</span>
-            <p className="text-py">{seg.pinyin}</p>
-          </div>
-        )}
-        {seg.japanese && (
-          <div className="interlinear-row">
-            <span className="lang-badge ja">日本語</span>
-            <p className="text-ja">{seg.japanese}</p>
-          </div>
-        )}
+        </div>
+
+        {/* ── ノート列（デスクトップ：常時表示） ── */}
+        <div className="segment-note-col note-desktop">
+          {noteContent}
+        </div>
       </div>
-      <div className="segment-footer">
-        <button className="btn-correct" onClick={onStartEdit}>
-          ✏️ この文を修正
-        </button>
-      </div>
+
+      {/* ── ノート（モバイル：トグルで表示） ── */}
+      {(showMobileNote || hasNote) && (
+        <div className="segment-note-col note-mobile">
+          {noteContent}
+        </div>
+      )}
     </div>
   )
 }
 
-// ── セグメント編集 ────────────────────────────────────────
+// ── セグメント編集 ────────────────────────────────────────────
 function SegmentEdit({ seg, onSave, onCancel }) {
   const [draft, setDraft] = useState({ ...seg })
   const set = (key, val) => setDraft(d => ({ ...d, [key]: val }))
@@ -88,30 +145,19 @@ function SegmentEdit({ seg, onSave, onCancel }) {
   )
 }
 
-// ── エントリーカード ──────────────────────────────────────
-function EntryCard({ entry, onEdit, onDelete, onUpdate }) {
-  const [expanded, setExpanded] = useState(false)
+// ── エントリーカード ──────────────────────────────────────────
+function EntryCard({ entry, expanded, onToggle, bookmarkPos, onSetBookmark, onEdit, onDelete, onUpdate }) {
   const [editingSegIdx, setEditingSegIdx] = useState(null)
   const segments = buildSegments(entry)
 
-  // しおり位置：「N 番目のセグメントの手前」= セグメント 0〜N-1 が済
-  const bmKey = `seg-bm-${entry.id}`
-  const [bookmarkPos, setBookmarkPos] = useState(() => {
-    const saved = localStorage.getItem(bmKey)
-    return saved !== null ? Number(saved) : null
-  })
+  const hasBookmark = bookmarkPos !== null && bookmarkPos !== undefined
+  const progress = hasBookmark ? `${bookmarkPos} / ${segments.length} 文` : null
 
-  useEffect(() => {
-    if (bookmarkPos !== null) {
-      localStorage.setItem(bmKey, String(bookmarkPos))
-    } else {
-      localStorage.removeItem(bmKey)
-    }
-  }, [bookmarkPos, bmKey])
-
-  function handleDividerTap(pos) {
-    // pos === null のとき → しおりを外す
-    setBookmarkPos(pos)
+  function handleNoteChange(segIdx, text) {
+    const updated = { ...(entry.notes || {}) }
+    if (text) updated[String(segIdx)] = text
+    else delete updated[String(segIdx)]
+    onUpdate({ notes: updated })
   }
 
   function handleSegmentSave(index, updated) {
@@ -125,14 +171,9 @@ function EntryCard({ entry, onEdit, onDelete, onUpdate }) {
     setEditingSegIdx(null)
   }
 
-  const hasBookmark = bookmarkPos !== null
-  const progress = hasBookmark
-    ? `${bookmarkPos} / ${segments.length} 文`
-    : null
-
   return (
     <div className="entry-card">
-      <div className="entry-header" onClick={() => setExpanded(e => !e)}>
+      <div className="entry-header" onClick={onToggle}>
         <div className="entry-header-left">
           <span className="entry-label">{entry.label || '翻訳文'}</span>
           {progress && <span className="entry-progress-badge">{progress}</span>}
@@ -155,19 +196,19 @@ function EntryCard({ entry, onEdit, onDelete, onUpdate }) {
                 onCancel={() => setEditingSegIdx(null)}
               />
             ) : (
-              // セグメント本体 → セグメント間の線（次のセグメントの手前）
               <div key={i}>
                 <SegmentView
                   seg={seg}
                   isPassed={hasBookmark && i < bookmarkPos}
                   onStartEdit={() => setEditingSegIdx(i)}
+                  note={(entry.notes || {})[String(i)] || ''}
+                  onNoteChange={text => handleNoteChange(i, text)}
                 />
-                {/* 最後のセグメント以外に divider を挿入 */}
                 {i < segments.length - 1 && (
                   <SegmentDivider
                     pos={i + 1}
                     isActive={bookmarkPos === i + 1}
-                    onTap={handleDividerTap}
+                    onTap={onSetBookmark}
                   />
                 )}
               </div>
@@ -179,10 +220,45 @@ function EntryCard({ entry, onEdit, onDelete, onUpdate }) {
   )
 }
 
-// ── ClassDetail ───────────────────────────────────────────
+// ── ClassDetail ───────────────────────────────────────────────
 export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, onDeleteEntry }) {
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm]   = useState(false)
   const [editingId, setEditingId] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchRef = useRef(null)
+
+  // 展開状態（全展開/折りたたみのために ClassDetail で管理）
+  const [expandedIds, setExpandedIds] = useState(new Set())
+
+  // しおり状態（クラス単位で localStorage 永続化）
+  const bmKey = `bookmarks-${cls.id}`
+  const [bookmarks, setBookmarks] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(bmKey) || '{}') }
+    catch { return {} }
+  })
+  useEffect(() => {
+    localStorage.setItem(bmKey, JSON.stringify(bookmarks))
+  }, [bookmarks, bmKey])
+
+  function handleSetBookmark(entryId, pos) {
+    setBookmarks(prev => {
+      const next = { ...prev }
+      if (pos === null) delete next[entryId]
+      else next[entryId] = pos
+      return next
+    })
+  }
+
+  // しおりへジャンプ
+  function jumpToBookmark() {
+    const entryId = cls.entries.find(e => bookmarks[e.id] !== undefined)?.id
+    if (!entryId) return
+    setExpandedIds(prev => new Set([...prev, entryId]))
+    setTimeout(() => {
+      document.querySelector('.seg-divider--active')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 120)
+  }
 
   function handleSave(form) {
     if (editingId) {
@@ -194,15 +270,63 @@ export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, on
     }
   }
 
+  // 検索フィルター
+  const q = searchQuery.trim().toLowerCase()
+  const filteredEntries = q
+    ? cls.entries.filter(e =>
+        (e.label    || '').toLowerCase().includes(q) ||
+        (e.chinese  || '').toLowerCase().includes(q) ||
+        (e.pinyin   || '').toLowerCase().includes(q) ||
+        (e.japanese || '').toLowerCase().includes(q)
+      )
+    : cls.entries
+
   const editingEntry = editingId ? cls.entries.find(e => e.id === editingId) : null
+  const hasAnyBookmark = Object.keys(bookmarks).length > 0
+  const allExpanded = filteredEntries.length > 0 && filteredEntries.every(e => expandedIds.has(e.id))
 
   return (
     <div className="page">
       <header className="page-header">
         <button className="btn-back" onClick={onBack}>← 戻る</button>
-        <h1>{cls.name}</h1>
+        <h1 className="page-title">{cls.name}</h1>
         <button className="btn-primary" onClick={() => { setShowForm(true); setEditingId(null) }}>＋ 追加</button>
       </header>
+
+      {/* ツールバー：検索 ＋ アクション */}
+      <div className="detail-toolbar">
+        <div className="search-wrap">
+          <span className="search-icon">⌕</span>
+          <input
+            ref={searchRef}
+            className="search-input"
+            type="text"
+            placeholder="本文・ラベルを検索..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button className="search-clear" onClick={() => setSearchQuery('')}>✕</button>
+          )}
+        </div>
+        <div className="toolbar-btns">
+          {hasAnyBookmark && (
+            <button className="btn-ghost btn-sm" onClick={jumpToBookmark} title="しおり位置までスクロール">
+              🔖 しおりへ
+            </button>
+          )}
+          <button
+            className="btn-ghost btn-sm"
+            onClick={() =>
+              allExpanded
+                ? setExpandedIds(new Set())
+                : setExpandedIds(new Set(filteredEntries.map(e => e.id)))
+            }
+          >
+            {allExpanded ? '▲ 全折りたたむ' : '▼ 全展開'}
+          </button>
+        </div>
+      </div>
 
       {(showForm && !editingId) && (
         <div className="form-section">
@@ -210,7 +334,6 @@ export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, on
           <EntryForm onSave={handleSave} onCancel={() => setShowForm(false)} />
         </div>
       )}
-
       {editingId && (
         <div className="form-section">
           <h2 className="section-title">全体編集</h2>
@@ -221,12 +344,23 @@ export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, on
       {cls.entries.length === 0 && !showForm && (
         <p className="empty">翻訳文を追加してください</p>
       )}
+      {filteredEntries.length === 0 && q && (
+        <p className="empty">「{searchQuery}」に一致する文が見つかりません</p>
+      )}
 
       <div className="entry-list">
-        {cls.entries.map(entry => (
+        {filteredEntries.map(entry => (
           <EntryCard
             key={entry.id}
             entry={entry}
+            expanded={expandedIds.has(entry.id)}
+            onToggle={() => setExpandedIds(prev => {
+              const next = new Set(prev)
+              next.has(entry.id) ? next.delete(entry.id) : next.add(entry.id)
+              return next
+            })}
+            bookmarkPos={bookmarks[entry.id] ?? null}
+            onSetBookmark={pos => handleSetBookmark(entry.id, pos)}
             onEdit={() => { setEditingId(entry.id); setShowForm(false) }}
             onDelete={() => onDeleteEntry(entry.id)}
             onUpdate={updated => onUpdateEntry(entry.id, updated)}
