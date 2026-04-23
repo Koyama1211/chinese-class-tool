@@ -1,45 +1,69 @@
 import { useState } from 'react'
 
-const PROMPT_TEMPLATE = `以下のフォーマットで出力してください。説明・前置き・補足は一切不要です。
+const PROMPT_TEMPLATE = `以下のフォーマットで、1文ごとにブロックを作って出力してください。説明・前置き・補足は一切不要です。
 
 【ルール】
-・文を句点（。！？…など）で区切り、1文＝1行で出力する
-・中文・拼音・日本語の3セクションは、必ず同じ行数にすること
-・N行目同士（中文N行目・拼音N行目・日本語N行目）は同一の文に対応させること
-・各セクションの先頭行はラベル行（「中文：」等）のみとし、本文はその次の行から書く
-・空行はセクション間にのみ入れる（セクション内には入れない）
+・文を句点（。！？…など）で区切り、1文＝1ブロックで出力する
+・各ブロックに中文・拼音・日本語を必ずセットで記載する
+・ブロック番号は ---1--- のようにハイフン3本で囲む
+・ブロック内に空行を入れない
 
-中文：
-[1文目]
-[2文目]
-...
-
-拼音：
-[1文目のピンイン]
-[2文目のピンイン]
-...
-
-日本語：
-[1文目の日本語訳]
-[2文目の日本語訳]
+---1---
+中文：[1文目]
+拼音：[1文目のピンイン]
+日本語：[1文目の日本語訳]
+---2---
+中文：[2文目]
+拼音：[2文目のピンイン]
+日本語：[2文目の日本語訳]
+---3---
+中文：[3文目]
+拼音：[3文目のピンイン]
+日本語：[3文目の日本語訳]
 ...`
 
 // ── AI 出力パーサー ───────────────────────────────────────────
+function extractValue(line) {
+  const idx = line.indexOf('：') > -1 ? line.indexOf('：') : line.indexOf(':')
+  return idx > -1 ? line.slice(idx + 1).trim() : ''
+}
+
 function parseAiOutput(text) {
+  // ブロック式（---N---）を優先パース
+  const blockPattern = /^---\d+---$/m
+  if (blockPattern.test(text)) {
+    const blocks = text.split(/^---\d+---\s*$/m).filter(b => b.trim())
+    const rows = blocks.map(block => {
+      const row = { chinese: '', pinyin: '', japanese: '' }
+      for (const raw of block.split('\n')) {
+        const line = raw.trim()
+        if (line.startsWith('中文：') || line.startsWith('中文:'))       row.chinese  = extractValue(line)
+        else if (line.startsWith('拼音：') || line.startsWith('拼音:'))  row.pinyin   = extractValue(line)
+        else if (line.startsWith('日本語：') || line.startsWith('日本語:')) row.japanese = extractValue(line)
+      }
+      return row
+    }).filter(r => r.chinese || r.pinyin || r.japanese)
+
+    return {
+      chinese:  rows.map(r => r.chinese),
+      pinyin:   rows.map(r => r.pinyin),
+      japanese: rows.map(r => r.japanese),
+    }
+  }
+
+  // フォールバック：旧セクション式
   const sections = {}
   let current = null
-
   for (const raw of text.split('\n')) {
     const line = raw.trim()
     const header =
       line.startsWith('中文：') || line.startsWith('中文:') ? 'chinese' :
       line.startsWith('拼音：') || line.startsWith('拼音:') ? 'pinyin' :
       (line.startsWith('日本語：') || line.startsWith('日本語:')) ? 'japanese' : null
-
     if (header) {
       current = header
       sections[current] ??= []
-      const rest = line.slice(line.indexOf('：') > -1 ? line.indexOf('：') + 1 : line.indexOf(':') + 1).trim()
+      const rest = extractValue(line)
       if (rest) sections[current].push(rest)
     } else if (current && line) {
       sections[current] ??= []
