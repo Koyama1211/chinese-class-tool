@@ -533,74 +533,63 @@ form { display: flex; flex-direction: column; gap: 14px; }
 .error { color: #ff3b30; font-size: 0.85rem; }
 .empty { color: #8e8e93; text-align: center; padding: 32px 0; }
 
-/* ── 授業タイマー（右下固定オーバーレイ）────────────────────── */
+/* ── 授業タイマー（右下固定・SVGリング）────────────────────── */
 .timer-overlay {
   position: fixed;
   bottom: 28px;
   right: 28px;
   z-index: 200;
-  background: rgba(28, 28, 30, 0.82);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: 18px;
-  padding: 16px 24px 14px;
+  background: rgba(18, 18, 20, 0.90);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 50%;          /* 円形カード */
+  width: 168px;
+  height: 168px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-width: 130px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+  justify-content: center;
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.08),
+    0 16px 48px rgba(0,0,0,0.50);
   user-select: none;
 }
 
-.timer-overlay-sub {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: rgba(255,255,255,0.45);
-  letter-spacing: 0.06em;
-}
-
-.timer-overlay-time {
-  font-size: 2.8rem;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-}
-
-.timer-overlay--urgent .timer-overlay-time {
-  color: #ff9500;
-  animation: timer-pulse 2s ease-in-out infinite;
-}
-
-.timer-overlay--done .timer-overlay-time {
-  font-size: 1.5rem;
-  color: rgba(255,255,255,0.5);
-}
-.timer-overlay--done .timer-overlay-sub {
-  display: none;
+/* 残り10分以下：外枠をオレンジでグロー */
+.timer-overlay--urgent {
+  box-shadow:
+    0 0 0 0.5px rgba(255,159,10,0.4),
+    0 0 24px rgba(255,159,10,0.25),
+    0 16px 48px rgba(0,0,0,0.50);
+  animation: timer-glow 2.2s ease-in-out infinite;
 }
 
 /* ↗ ポップアウトボタン */
 .timer-overlay-popup {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  background: none;
+  top: 14px;
+  right: 14px;
+  background: rgba(255,255,255,0.08);
   border: none;
-  color: rgba(255,255,255,0.35);
-  font-size: 0.75rem;
+  color: rgba(255,255,255,0.4);
+  font-size: 0.7rem;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: color 0.15s;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
   line-height: 1;
 }
-.timer-overlay-popup:hover { color: rgba(255,255,255,0.75); }
+.timer-overlay-popup:hover {
+  background: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.85);
+}
 
-@keyframes timer-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.6; }
+@keyframes timer-glow {
+  0%, 100% { box-shadow: 0 0 0 0.5px rgba(255,159,10,0.4), 0 0 24px rgba(255,159,10,0.25), 0 16px 48px rgba(0,0,0,0.5); }
+  50%       { box-shadow: 0 0 0 0.5px rgba(255,159,10,0.7), 0 0 40px rgba(255,159,10,0.45), 0 16px 48px rgba(0,0,0,0.5); }
 }
 
 /* ── 授業スケジュール（ClassList） ──────────────────────────── */

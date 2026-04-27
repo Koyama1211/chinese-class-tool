@@ -204,93 +204,183 @@ function EntryCard({ entry, expanded, onToggle, bookmarkPos, onSetBookmark, onEd
   )
 }
 
-// ── 授業タイマー（右下固定オーバーレイ）────────────────────────
+// ── 授業タイマー（右下固定・SVGリング）────────────────────────
 const DAY_INDEX = { '日':0, '月':1, '火':2, '水':3, '木':4, '金':5, '土':6 }
+const R = 52, CX = 64, CY = 64
+const CIRC = 2 * Math.PI * R
 
-function openTimerPopup(endTime) {
-  const popup = window.open('', 'classtimer',
-    'width=260,height=150,toolbar=no,menubar=no,location=no,status=no,resizable=yes')
-  if (!popup) return
-  popup.document.write(`<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<title>授業タイマー</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #1c1c1e;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    height: 100vh;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    user-select: none;
-  }
-  #sub  { font-size: 0.78rem; color: rgba(255,255,255,0.45); letter-spacing: 0.05em; margin-bottom: 6px; }
-  #time { font-size: 3.2rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; line-height: 1; }
-  #time.urgent { color: #ff9500; }
-  #time.done   { font-size: 1.8rem; color: #8e8e93; }
-</style>
-</head>
-<body>
-  <div id="sub">授業終了まで</div>
-  <div id="time">--</div>
-<script>
-  var END = "${endTime}";
-  function update() {
-    var parts = END.split(':');
-    var end = new Date();
-    end.setHours(+parts[0], +parts[1], 0, 0);
-    var rem = Math.round((end - Date.now()) / 60000);
-    var el = document.getElementById('time');
-    var sub = document.getElementById('sub');
-    el.className = '';
-    if (rem <= 0) { el.textContent = '終了'; el.className = 'done'; sub.textContent = ''; }
-    else { el.textContent = rem + ' 分'; if (rem <= 10) el.className = 'urgent'; }
-  }
-  update();
-  setInterval(update, 30000);
-</script>
-</body>
-</html>`)
-  popup.document.close()
+function ringColor(remSec, totalSec) {
+  if (remSec <= 0) return '#636366'
+  const pct = totalSec ? remSec / totalSec : 1
+  if (pct > 0.5)  return '#30d158'   // green
+  if (pct > 0.25) return '#ffd60a'   // yellow
+  if (pct > 0.1)  return '#ff9f0a'   // orange
+  return '#ff453a'                    // red
 }
 
-function ClassTimer({ endTime, dayOfWeek }) {
-  const [remaining, setRemaining] = useState(null)
+function openTimerPopup(endTime, startTime) {
+  const w = window.open('', 'classtimer',
+    'width=300,height=300,toolbar=no,menubar=no,location=no,status=no,resizable=yes')
+  if (!w) return
+  w.document.write(`<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><title>授業タイマー</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#111; display:flex; align-items:center; justify-content:center;
+  height:100vh; font-family:-apple-system,sans-serif; user-select:none; overflow:hidden; }
+svg { display:block; }
+#ring-bg  { fill:none; stroke:rgba(255,255,255,0.07); stroke-width:9; }
+#ring-arc { fill:none; stroke-width:9; stroke-linecap:round;
+  stroke-dasharray:${CIRC.toFixed(1)};
+  transform:rotate(-90deg); transform-origin:50% 50%;
+  transition:stroke-dashoffset 0.9s ease, stroke 0.5s; }
+#mins  { font-size:52px; font-weight:800; fill:#fff; text-anchor:middle; letter-spacing:-1px; }
+#unit  { font-size:16px; font-weight:600; fill:rgba(255,255,255,0.45); text-anchor:middle; }
+#secs  { font-size:13px; fill:rgba(255,255,255,0.3); text-anchor:middle; }
+#label { font-size:11px; letter-spacing:1px; fill:rgba(255,255,255,0.25); text-anchor:middle; }
+#done-txt { font-size:28px; font-weight:700; fill:rgba(255,255,255,0.35);
+  text-anchor:middle; dominant-baseline:middle; display:none; }
+</style></head>
+<body><svg width="280" height="280" viewBox="0 0 128 128">
+  <circle id="ring-bg"  cx="${CX}" cy="${CY}" r="${R}" />
+  <circle id="ring-arc" cx="${CX}" cy="${CY}" r="${R}" />
+  <text id="mins"  x="${CX}" y="57"></text>
+  <text id="unit"  x="${CX}" y="76">分</text>
+  <text id="secs"  x="${CX}" y="90"></text>
+  <text id="label" x="${CX}" y="108">授業終了まで</text>
+  <text id="done-txt" x="${CX}" y="${CY}">授業終了</text>
+</svg>
+<script>
+var END="${endTime}", START="${startTime || ''}";
+var CIRC=${CIRC.toFixed(1)};
+function toDate(t){ var p=t.split(':'); var d=new Date(); d.setHours(+p[0],+p[1],0,0); return d; }
+function ringColor(r,tot){
+  var p=tot?r/tot:1;
+  if(p>0.5)return'#30d158'; if(p>0.25)return'#ffd60a';
+  if(p>0.1)return'#ff9f0a'; return'#ff453a';
+}
+var arc=document.getElementById('ring-arc');
+var totalSec=START?(toDate(END)-toDate(START))/1000:0;
+function update(){
+  var end=toDate(END); var remMs=end-Date.now();
+  var remSec=Math.round(remMs/1000);
+  var mins=document.getElementById('mins');
+  var unit=document.getElementById('unit');
+  var secs=document.getElementById('secs');
+  var lbl=document.getElementById('label');
+  var done=document.getElementById('done-txt');
+  if(remSec<=0){
+    mins.style.display=unit.style.display=secs.style.display=lbl.style.display='none';
+    done.style.display='block';
+    arc.style.strokeDashoffset=CIRC;
+  } else {
+    var m=Math.floor(remSec/60), s=remSec%60;
+    mins.textContent=m; secs.textContent=String(s).padStart(2,'0')+'秒';
+    var elapsed=totalSec?Math.max(0,(totalSec-remSec)/totalSec):0;
+    arc.style.strokeDashoffset=(CIRC*elapsed).toFixed(1);
+    arc.style.stroke=ringColor(remSec,totalSec);
+  }
+}
+update(); setInterval(update,1000);
+</script></body></html>`)
+  w.document.close()
+}
+
+function ClassTimer({ endTime, startTime, dayOfWeek }) {
+  // remSec: 残り秒数（null = 非表示）
+  const [remSec, setRemSec] = useState(null)
+  const [totalSec, setTotalSec] = useState(0)
 
   useEffect(() => {
-    if (!endTime) { setRemaining(null); return }
+    if (!endTime) { setRemSec(null); return }
     function calc() {
       if (dayOfWeek && new Date().getDay() !== DAY_INDEX[dayOfWeek]) {
-        setRemaining(null); return
+        setRemSec(null); return
       }
-      const [h, m] = endTime.split(':').map(Number)
-      const end = new Date()
-      end.setHours(h, m, 0, 0)
-      setRemaining(Math.round((end - Date.now()) / 60000))
+      const toDate = t => {
+        const [h, m] = t.split(':').map(Number)
+        const d = new Date(); d.setHours(h, m, 0, 0); return d
+      }
+      const end = toDate(endTime)
+      setRemSec(Math.round((end - Date.now()) / 1000))
+      if (startTime) setTotalSec(Math.round((end - toDate(startTime)) / 1000))
     }
     calc()
-    const id = setInterval(calc, 30000)
+    const id = setInterval(calc, 1000)
     return () => clearInterval(id)
-  }, [endTime, dayOfWeek])
+  }, [endTime, startTime, dayOfWeek])
 
-  if (!endTime || remaining === null) return null
+  if (!endTime || remSec === null) return null
 
-  const done   = remaining <= 0
-  const urgent = !done && remaining <= 10
+  const done  = remSec <= 0
+  const mins  = Math.floor(Math.abs(remSec) / 60)
+  const secs  = Math.abs(remSec) % 60
+  const color = ringColor(remSec, totalSec)
+
+  // リングの進捗（経過分だけ空ける）
+  const elapsed = totalSec ? Math.max(0, (totalSec - Math.max(0, remSec)) / totalSec) : 0
+  const offset  = CIRC * elapsed   // 経過した分だけ stroke がずれる（残りが光る）
+
+  const urgent = !done && remSec <= 600  // 10分以下
 
   return (
     <div className={`timer-overlay${urgent ? ' timer-overlay--urgent' : ''}${done ? ' timer-overlay--done' : ''}`}>
-      <div className="timer-overlay-sub">授業終了まで</div>
-      <div className="timer-overlay-time">
-        {done ? '終了' : `${remaining}分`}
-      </div>
+      {/* ポップアウトボタン */}
       <button
         className="timer-overlay-popup"
-        onClick={() => openTimerPopup(endTime)}
+        onClick={() => openTimerPopup(endTime, startTime)}
         title="別ウィンドウで開く"
       >↗</button>
+
+      <svg width="156" height="156" viewBox="0 0 128 128" aria-hidden="true">
+        {/* 背景リング */}
+        <circle cx={CX} cy={CY} r={R} fill="none"
+          stroke="rgba(255,255,255,0.07)" strokeWidth="8" />
+        {/* 進捗リング */}
+        <circle cx={CX} cy={CY} r={R} fill="none"
+          stroke={done ? '#636366' : color}
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={CIRC}
+          strokeDashoffset={offset}
+          transform={`rotate(-90 ${CX} ${CY})`}
+          style={{ transition: 'stroke-dashoffset 0.9s ease, stroke 0.5s ease' }}
+        />
+        {done ? (
+          <text x={CX} y={CY + 6} textAnchor="middle"
+            fill="rgba(255,255,255,0.4)" fontSize="14" fontWeight="700"
+            fontFamily="-apple-system,sans-serif">
+            授業終了
+          </text>
+        ) : (
+          <>
+            {/* 分 */}
+            <text x={CX} y="57" textAnchor="middle"
+              fill="#fff" fontSize="30" fontWeight="800"
+              fontFamily="-apple-system,sans-serif" letterSpacing="-0.5">
+              {mins}
+            </text>
+            {/* 単位 */}
+            <text x={CX} y="74" textAnchor="middle"
+              fill="rgba(255,255,255,0.45)" fontSize="13"
+              fontFamily="-apple-system,sans-serif">
+              分
+            </text>
+            {/* 秒 */}
+            <text x={CX} y="89" textAnchor="middle"
+              fill="rgba(255,255,255,0.28)" fontSize="11"
+              fontFamily="-apple-system,sans-serif">
+              {String(secs).padStart(2, '0')} 秒
+            </text>
+            {/* ラベル */}
+            <text x={CX} y="107" textAnchor="middle"
+              fill="rgba(255,255,255,0.2)" fontSize="9.5" letterSpacing="0.8"
+              fontFamily="-apple-system,sans-serif">
+              授業終了まで
+            </text>
+          </>
+        )}
+      </svg>
     </div>
   )
 }
@@ -399,7 +489,7 @@ export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, on
       {filteredEntries.length === 0 && q && <p className="empty">「{searchQuery}」に一致する文が見つかりません</p>}
 
       {/* 右下固定タイマー */}
-      <ClassTimer endTime={cls.end_time} dayOfWeek={cls.day_of_week} />
+      <ClassTimer endTime={cls.end_time} startTime={cls.start_time} dayOfWeek={cls.day_of_week} />
 
       <div className="entry-list">
         {filteredEntries.map(entry => (
