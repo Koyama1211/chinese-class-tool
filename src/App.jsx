@@ -5,7 +5,7 @@ import { useStore } from './hooks/useStore'
 import './App.css'
 
 export default function App() {
-  const { data, loading, error, addClass, deleteClass, addEntry, updateEntry, deleteEntry, getClass } = useStore()
+  const { data, loading, error, addClass, deleteClass, updateClass, addEntry, updateEntry, deleteEntry, getClass } = useStore()
   const [selectedId, setSelectedId] = useState(null)
 
   if (loading) {
@@ -39,6 +39,7 @@ export default function App() {
           onSelect={setSelectedId}
           onAdd={addClass}
           onDelete={deleteClass}
+          onUpdate={updateClass}
         />
       ) : (
         <ClassDetail

@@ -205,81 +205,41 @@ function EntryCard({ entry, expanded, onToggle, bookmarkPos, onSetBookmark, onEd
 }
 
 // ── 授業タイマー ──────────────────────────────────────────────
-function ClassTimer() {
-  const STORAGE_KEY = 'classEndTime'
-  const [endTime, setEndTime] = useState(() => localStorage.getItem(STORAGE_KEY) || '')
+const DAY_INDEX = { '日':0, '月':1, '火':2, '水':3, '木':4, '金':5, '土':6 }
+
+function ClassTimer({ endTime, dayOfWeek }) {
   const [remaining, setRemaining] = useState(null)
-  const [editing, setEditing] = useState(false)
-  const [inputVal, setInputVal] = useState('')
 
   useEffect(() => {
     if (!endTime) { setRemaining(null); return }
+
     function calc() {
+      // 曜日が設定されていて今日と違う → 表示しない
+      if (dayOfWeek && new Date().getDay() !== DAY_INDEX[dayOfWeek]) {
+        setRemaining(null)
+        return
+      }
       const [h, m] = endTime.split(':').map(Number)
       const end = new Date()
       end.setHours(h, m, 0, 0)
       setRemaining(Math.round((end - Date.now()) / 60000))
     }
+
     calc()
     const id = setInterval(calc, 30000)
     return () => clearInterval(id)
-  }, [endTime])
+  }, [endTime, dayOfWeek])
 
-  function handleSet() {
-    if (!inputVal) return
-    localStorage.setItem(STORAGE_KEY, inputVal)
-    setEndTime(inputVal)
-    setEditing(false)
-  }
-
-  function handleClear() {
-    localStorage.removeItem(STORAGE_KEY)
-    setEndTime('')
-    setRemaining(null)
-    setEditing(false)
-  }
-
-  function openEdit() { setInputVal(endTime || ''); setEditing(true) }
-
-  if (editing) {
-    return (
-      <div className="timer-edit">
-        <input
-          type="time"
-          className="timer-time-input"
-          value={inputVal}
-          onChange={e => setInputVal(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleSet() }}
-          autoFocus
-        />
-        <button className="btn-primary btn-sm" onClick={handleSet}>セット</button>
-        {endTime && <button className="btn-ghost btn-sm" onClick={handleClear}>解除</button>}
-        <button className="btn-ghost btn-sm" onClick={() => setEditing(false)}>✕</button>
-      </div>
-    )
-  }
-
-  if (!endTime || remaining === null) {
-    return (
-      <button className="timer-set-btn toolbar-btn" onClick={openEdit} title="授業終了時間を設定">
-        🕐
-      </button>
-    )
-  }
+  if (!endTime || remaining === null) return null
 
   const done   = remaining <= 0
   const urgent = !done && remaining <= 10
-  const label  = done ? '終了' : `${remaining}分`
 
   return (
-    <button
-      className={`timer-display${urgent ? ' timer-display--urgent' : ''}${done ? ' timer-display--done' : ''}`}
-      onClick={openEdit}
-      title="クリックして変更"
-    >
+    <div className={`timer-display${urgent ? ' timer-display--urgent' : ''}${done ? ' timer-display--done' : ''}`}>
       <span className="timer-icon">🕐</span>
-      <span className="timer-label">{done ? '授業終了' : `あと ${label}`}</span>
-    </button>
+      <span className="timer-label">{done ? '授業終了' : `あと ${remaining}分`}</span>
+    </div>
   )
 }
 
@@ -337,7 +297,7 @@ export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, on
 
       {/* ─── Sticky ツールバー ─── */}
       <div className="toolbar">
-        <ClassTimer />
+        <ClassTimer endTime={cls.end_time} dayOfWeek={cls.day_of_week} />
         <div className="search-wrap">
           <span className="search-icon">⌕</span>
           <input

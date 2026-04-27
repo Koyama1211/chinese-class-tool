@@ -61,6 +61,13 @@ export function useStore() {
     }))
   }
 
+  async function updateClass(classId, fields) {
+    await supabase.from('classes').update(fields).eq('id', classId)
+    setData(d => ({
+      classes: d.classes.map(c => c.id === classId ? { ...c, ...fields } : c),
+    }))
+  }
+
   // --- エントリー ---
   async function addEntry(classId, entry) {
     const { data: newEntry, error: err } = await supabase
@@ -127,6 +134,7 @@ export function useStore() {
     addClass,
     deleteClass,
     renameClass,
+    updateClass,
     addEntry,
     updateEntry,
     deleteEntry,

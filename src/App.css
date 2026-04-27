@@ -112,22 +112,28 @@ body {
 /* Class list */
 .class-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
 
-.class-item {
+/* li wrapper — 影・角丸はここで管理 */
+.class-item-wrap {
   background: #fff;
   border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  overflow: hidden;          /* 子の角丸を親でクリップ */
+  transition: box-shadow 0.15s;
+}
+.class-item-wrap:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+
+.class-item {
   padding: 14px 16px;
   display: flex;
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  transition: box-shadow 0.15s;
 }
-.class-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.class-item:hover { background: #f9f9fb; }
 
-.class-item-body { flex: 1; display: flex; align-items: center; gap: 8px; }
+.class-item-body { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
 .class-name { font-weight: 600; font-size: 1rem; }
-.class-count { color: #8e8e93; font-size: 0.85rem; }
+.class-count { color: #8e8e93; font-size: 0.85rem; flex-shrink: 0; }
 
 /* Entry list */
 .entry-list { display: flex; flex-direction: column; gap: 10px; }
@@ -527,38 +533,26 @@ form { display: flex; flex-direction: column; gap: 14px; }
 .error { color: #ff3b30; font-size: 0.85rem; }
 .empty { color: #8e8e93; text-align: center; padding: 32px 0; }
 
-/* ── 授業タイマー ───────────────────────────────────────────── */
-
-/* 未設定時：時計アイコンのみ */
-.timer-set-btn {
-  font-size: 1rem;
-}
-
-/* カウントダウン表示 */
+/* ── 授業タイマー（ツールバー表示） ────────────────────────── */
 .timer-display {
   display: flex;
   align-items: center;
   gap: 5px;
   background: rgba(120,120,128,0.12);
-  border: none;
   border-radius: 8px;
   padding: 5px 10px;
-  cursor: pointer;
   font-size: 0.82rem;
   font-weight: 700;
   color: #1d1d1f;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
 }
-.timer-display:hover { background: rgba(120,120,128,0.22); }
 
 .timer-display--urgent {
   background: rgba(255, 149, 0, 0.15);
   color: #c45a00;
   animation: timer-pulse 2s ease-in-out infinite;
 }
-.timer-display--urgent:hover { background: rgba(255, 149, 0, 0.25); }
 
 .timer-display--done {
   background: rgba(120,120,128,0.1);
@@ -570,28 +564,131 @@ form { display: flex; flex-direction: column; gap: 14px; }
   50%       { opacity: 0.65; }
 }
 
-.timer-icon { font-size: 0.88rem; }
+.timer-icon  { font-size: 0.88rem; }
 .timer-label { letter-spacing: 0.01em; }
 
-/* 編集モード */
-.timer-edit {
+/* ── 授業スケジュール（ClassList） ──────────────────────────── */
+
+/* class-item を li で包む wrapper */
+.class-item-wrap { list-style: none; }
+
+/* 名前行：class-name + schedule-badge を横並び */
+.class-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.schedule-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 99px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* class-item の右端ボタン群 */
+.class-item-actions {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
 }
-.timer-time-input {
+
+/* スケジュール編集パネル */
+.schedule-editor {
+  background: #f9f9fb;
+  border: 1px solid #e5e5ea;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.schedule-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.schedule-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #636366;
+  min-width: 30px;
+  flex-shrink: 0;
+}
+
+/* 曜日ボタン群 */
+.day-btns {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.day-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #c7c7cc;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #1d1d1f;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.day-btn:hover { background: #f0f0f5; }
+.day-btn--active {
+  background: #007aff;
+  border-color: #007aff;
+  color: #fff;
+}
+
+/* 時間入力 */
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-input {
   border: 1px solid #c7c7cc;
   border-radius: 7px;
-  padding: 4px 8px;
-  font-size: 0.88rem;
+  padding: 5px 9px;
+  font-size: 0.9rem;
   font-family: inherit;
   background: #fff;
   outline: none;
   color: #1d1d1f;
-  width: 100px;
+  width: 108px;
 }
-.timer-time-input:focus { border-color: #007aff; }
+.time-input:focus { border-color: #007aff; }
+
+.time-sep {
+  font-size: 0.88rem;
+  color: #8e8e93;
+  flex-shrink: 0;
+}
+
+.schedule-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 4px;
+  border-top: 1px solid #e5e5ea;
+}
 
 /* ── ParseVerifier ──────────────────────────────────────────── */
 .parse-verifier {
