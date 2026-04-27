@@ -204,6 +204,85 @@ function EntryCard({ entry, expanded, onToggle, bookmarkPos, onSetBookmark, onEd
   )
 }
 
+// ── 授業タイマー ──────────────────────────────────────────────
+function ClassTimer() {
+  const STORAGE_KEY = 'classEndTime'
+  const [endTime, setEndTime] = useState(() => localStorage.getItem(STORAGE_KEY) || '')
+  const [remaining, setRemaining] = useState(null)
+  const [editing, setEditing] = useState(false)
+  const [inputVal, setInputVal] = useState('')
+
+  useEffect(() => {
+    if (!endTime) { setRemaining(null); return }
+    function calc() {
+      const [h, m] = endTime.split(':').map(Number)
+      const end = new Date()
+      end.setHours(h, m, 0, 0)
+      setRemaining(Math.round((end - Date.now()) / 60000))
+    }
+    calc()
+    const id = setInterval(calc, 30000)
+    return () => clearInterval(id)
+  }, [endTime])
+
+  function handleSet() {
+    if (!inputVal) return
+    localStorage.setItem(STORAGE_KEY, inputVal)
+    setEndTime(inputVal)
+    setEditing(false)
+  }
+
+  function handleClear() {
+    localStorage.removeItem(STORAGE_KEY)
+    setEndTime('')
+    setRemaining(null)
+    setEditing(false)
+  }
+
+  function openEdit() { setInputVal(endTime || ''); setEditing(true) }
+
+  if (editing) {
+    return (
+      <div className="timer-edit">
+        <input
+          type="time"
+          className="timer-time-input"
+          value={inputVal}
+          onChange={e => setInputVal(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleSet() }}
+          autoFocus
+        />
+        <button className="btn-primary btn-sm" onClick={handleSet}>セット</button>
+        {endTime && <button className="btn-ghost btn-sm" onClick={handleClear}>解除</button>}
+        <button className="btn-ghost btn-sm" onClick={() => setEditing(false)}>✕</button>
+      </div>
+    )
+  }
+
+  if (!endTime || remaining === null) {
+    return (
+      <button className="timer-set-btn toolbar-btn" onClick={openEdit} title="授業終了時間を設定">
+        🕐
+      </button>
+    )
+  }
+
+  const done   = remaining <= 0
+  const urgent = !done && remaining <= 10
+  const label  = done ? '終了' : `${remaining}分`
+
+  return (
+    <button
+      className={`timer-display${urgent ? ' timer-display--urgent' : ''}${done ? ' timer-display--done' : ''}`}
+      onClick={openEdit}
+      title="クリックして変更"
+    >
+      <span className="timer-icon">🕐</span>
+      <span className="timer-label">{done ? '授業終了' : `あと ${label}`}</span>
+    </button>
+  )
+}
+
 // ── ClassDetail ───────────────────────────────────────────────
 export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, onDeleteEntry }) {
   const [showForm,   setShowForm]   = useState(false)
@@ -258,6 +337,7 @@ export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, on
 
       {/* ─── Sticky ツールバー ─── */}
       <div className="toolbar">
+        <ClassTimer />
         <div className="search-wrap">
           <span className="search-icon">⌕</span>
           <input

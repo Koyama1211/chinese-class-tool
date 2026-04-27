@@ -527,6 +527,72 @@ form { display: flex; flex-direction: column; gap: 14px; }
 .error { color: #ff3b30; font-size: 0.85rem; }
 .empty { color: #8e8e93; text-align: center; padding: 32px 0; }
 
+/* ── 授業タイマー ───────────────────────────────────────────── */
+
+/* 未設定時：時計アイコンのみ */
+.timer-set-btn {
+  font-size: 1rem;
+}
+
+/* カウントダウン表示 */
+.timer-display {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(120,120,128,0.12);
+  border: none;
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1d1d1f;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.timer-display:hover { background: rgba(120,120,128,0.22); }
+
+.timer-display--urgent {
+  background: rgba(255, 149, 0, 0.15);
+  color: #c45a00;
+  animation: timer-pulse 2s ease-in-out infinite;
+}
+.timer-display--urgent:hover { background: rgba(255, 149, 0, 0.25); }
+
+.timer-display--done {
+  background: rgba(120,120,128,0.1);
+  color: #8e8e93;
+}
+
+@keyframes timer-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+.timer-icon { font-size: 0.88rem; }
+.timer-label { letter-spacing: 0.01em; }
+
+/* 編集モード */
+.timer-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.timer-time-input {
+  border: 1px solid #c7c7cc;
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  background: #fff;
+  outline: none;
+  color: #1d1d1f;
+  width: 100px;
+}
+.timer-time-input:focus { border-color: #007aff; }
+
 /* ── ParseVerifier ──────────────────────────────────────────── */
 .parse-verifier {
   display: flex;
