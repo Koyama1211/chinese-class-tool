@@ -204,27 +204,72 @@ function EntryCard({ entry, expanded, onToggle, bookmarkPos, onSetBookmark, onEd
   )
 }
 
-// ── 授業タイマー ──────────────────────────────────────────────
+// ── 授業タイマー（右下固定オーバーレイ）────────────────────────
 const DAY_INDEX = { '日':0, '月':1, '火':2, '水':3, '木':4, '金':5, '土':6 }
+
+function openTimerPopup(endTime) {
+  const popup = window.open('', 'classtimer',
+    'width=260,height=150,toolbar=no,menubar=no,location=no,status=no,resizable=yes')
+  if (!popup) return
+  popup.document.write(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>授業タイマー</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1c1c1e;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    user-select: none;
+  }
+  #sub  { font-size: 0.78rem; color: rgba(255,255,255,0.45); letter-spacing: 0.05em; margin-bottom: 6px; }
+  #time { font-size: 3.2rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; line-height: 1; }
+  #time.urgent { color: #ff9500; }
+  #time.done   { font-size: 1.8rem; color: #8e8e93; }
+</style>
+</head>
+<body>
+  <div id="sub">授業終了まで</div>
+  <div id="time">--</div>
+<script>
+  var END = "${endTime}";
+  function update() {
+    var parts = END.split(':');
+    var end = new Date();
+    end.setHours(+parts[0], +parts[1], 0, 0);
+    var rem = Math.round((end - Date.now()) / 60000);
+    var el = document.getElementById('time');
+    var sub = document.getElementById('sub');
+    el.className = '';
+    if (rem <= 0) { el.textContent = '終了'; el.className = 'done'; sub.textContent = ''; }
+    else { el.textContent = rem + ' 分'; if (rem <= 10) el.className = 'urgent'; }
+  }
+  update();
+  setInterval(update, 30000);
+</script>
+</body>
+</html>`)
+  popup.document.close()
+}
 
 function ClassTimer({ endTime, dayOfWeek }) {
   const [remaining, setRemaining] = useState(null)
 
   useEffect(() => {
     if (!endTime) { setRemaining(null); return }
-
     function calc() {
-      // 曜日が設定されていて今日と違う → 表示しない
       if (dayOfWeek && new Date().getDay() !== DAY_INDEX[dayOfWeek]) {
-        setRemaining(null)
-        return
+        setRemaining(null); return
       }
       const [h, m] = endTime.split(':').map(Number)
       const end = new Date()
       end.setHours(h, m, 0, 0)
       setRemaining(Math.round((end - Date.now()) / 60000))
     }
-
     calc()
     const id = setInterval(calc, 30000)
     return () => clearInterval(id)
@@ -236,9 +281,16 @@ function ClassTimer({ endTime, dayOfWeek }) {
   const urgent = !done && remaining <= 10
 
   return (
-    <div className={`timer-display${urgent ? ' timer-display--urgent' : ''}${done ? ' timer-display--done' : ''}`}>
-      <span className="timer-icon">🕐</span>
-      <span className="timer-label">{done ? '授業終了' : `あと ${remaining}分`}</span>
+    <div className={`timer-overlay${urgent ? ' timer-overlay--urgent' : ''}${done ? ' timer-overlay--done' : ''}`}>
+      <div className="timer-overlay-sub">授業終了まで</div>
+      <div className="timer-overlay-time">
+        {done ? '終了' : `${remaining}分`}
+      </div>
+      <button
+        className="timer-overlay-popup"
+        onClick={() => openTimerPopup(endTime)}
+        title="別ウィンドウで開く"
+      >↗</button>
     </div>
   )
 }
@@ -297,7 +349,6 @@ export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, on
 
       {/* ─── Sticky ツールバー ─── */}
       <div className="toolbar">
-        <ClassTimer endTime={cls.end_time} dayOfWeek={cls.day_of_week} />
         <div className="search-wrap">
           <span className="search-icon">⌕</span>
           <input
@@ -346,6 +397,9 @@ export default function ClassDetail({ cls, onBack, onAddEntry, onUpdateEntry, on
       )}
       {cls.entries.length === 0 && !showForm && <p className="empty">翻訳文を追加してください</p>}
       {filteredEntries.length === 0 && q && <p className="empty">「{searchQuery}」に一致する文が見つかりません</p>}
+
+      {/* 右下固定タイマー */}
+      <ClassTimer endTime={cls.end_time} dayOfWeek={cls.day_of_week} />
 
       <div className="entry-list">
         {filteredEntries.map(entry => (

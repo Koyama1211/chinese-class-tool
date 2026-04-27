@@ -533,39 +533,75 @@ form { display: flex; flex-direction: column; gap: 14px; }
 .error { color: #ff3b30; font-size: 0.85rem; }
 .empty { color: #8e8e93; text-align: center; padding: 32px 0; }
 
-/* ── 授業タイマー（ツールバー表示） ────────────────────────── */
-.timer-display {
+/* ── 授業タイマー（右下固定オーバーレイ）────────────────────── */
+.timer-overlay {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 200;
+  background: rgba(28, 28, 30, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 18px;
+  padding: 16px 24px 14px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 5px;
-  background: rgba(120,120,128,0.12);
-  border-radius: 8px;
-  padding: 5px 10px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #1d1d1f;
-  white-space: nowrap;
-  flex-shrink: 0;
+  gap: 2px;
+  min-width: 130px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+  user-select: none;
 }
 
-.timer-display--urgent {
-  background: rgba(255, 149, 0, 0.15);
-  color: #c45a00;
+.timer-overlay-sub {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.06em;
+}
+
+.timer-overlay-time {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.timer-overlay--urgent .timer-overlay-time {
+  color: #ff9500;
   animation: timer-pulse 2s ease-in-out infinite;
 }
 
-.timer-display--done {
-  background: rgba(120,120,128,0.1);
-  color: #8e8e93;
+.timer-overlay--done .timer-overlay-time {
+  font-size: 1.5rem;
+  color: rgba(255,255,255,0.5);
 }
+.timer-overlay--done .timer-overlay-sub {
+  display: none;
+}
+
+/* ↗ ポップアウトボタン */
+.timer-overlay-popup {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.35);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s;
+  line-height: 1;
+}
+.timer-overlay-popup:hover { color: rgba(255,255,255,0.75); }
 
 @keyframes timer-pulse {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.65; }
+  50%       { opacity: 0.6; }
 }
-
-.timer-icon  { font-size: 0.88rem; }
-.timer-label { letter-spacing: 0.01em; }
 
 /* ── 授業スケジュール（ClassList） ──────────────────────────── */
 
